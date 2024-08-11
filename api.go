@@ -28,6 +28,7 @@ type ApiError struct{
 
 type ApiServer struct {
 	 listenAddr string
+   store Storage
 }
 
 func makeHttpHandlerFunc(f apiFunc)http.HandlerFunc {
@@ -44,9 +45,10 @@ func makeHttpHandlerFunc(f apiFunc)http.HandlerFunc {
 
 
 
-func NewApiServer(listenAddr string) *ApiServer {
+func NewApiServer(listenAddr string , store Storage) *ApiServer {
    return &ApiServer{
    	 listenAddr: listenAddr,
+     store: store,
    } 
 }
 
@@ -54,7 +56,7 @@ func(s *ApiServer) Run(){
 	 router := mux.NewRouter();
 	 router.HandleFunc("/account" , makeHttpHandlerFunc(s.handleAccount))
 	 router.HandleFunc("/account/{id}" , makeHttpHandlerFunc(s.handleGetAccount))
-	 log.Println("JSON API Running at port")
+	 log.Println("JSON API Running at port" ,s.listenAddr)
 	 http.ListenAndServe(s.listenAddr ,router);
 }
 
@@ -72,16 +74,42 @@ func (s *ApiServer) handleAccount(w http.ResponseWriter,r *http.Request )error{
   return fmt.Errorf("Method not allowed %v" , r.Method);
 }
 
-func (s *ApiServer) handleGetAccount(w http.ResponseWriter, r *http.Request )error{
-  id := mux.Vars(r)["id"];
+ 
+func (s *ApiServer) handleGetAccountByID(w http.ResponseWriter, r *http.Request) error {
+   id := mux.Vars(r)["id"];
   //account := NewAccount("Eswar" , "Mamidi");
   log.Println(id)
   WriteJson(w,http.StatusOK , &Account{});
   return nil;
 }
 
+func (s *ApiServer) handleGetAccount(w http.ResponseWriter, r *http.Request )error{
+  
+ accounts, err := s.store.GetAccounts()
+  if err != nil {
+    return err
+  }
+
+  WriteJson(w, http.StatusOK, accounts)
+  return nil
+}
+
 func (s *ApiServer) handleCreateAccount(w http.ResponseWriter,r *http.Request )error{
-  return nil;
+  
+  create_account_request := CreateAccountRequest{}
+
+  err:= json.NewDecoder(r.Body).Decode(&create_account_request)
+  if err!=nil{
+     return err
+  }
+  account := NewAccount(create_account_request.FirstName , create_account_request.LastName)
+
+
+  if err := s.store.CreateAccount(account); err!=nil{
+     return err
+  }
+  WriteJson(w,http.StatusOK , account)
+  return nil
 }
 
 func (s *ApiServer) handleDeleteAccount(w http.ResponseWriter,r *http.Request )error{
