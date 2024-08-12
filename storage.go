@@ -14,7 +14,7 @@ type Storage interface {
 	  DeleteAccount(int)error
 	  UpdateAccount(*Account)error
 	  GetAccountById(int)( *Account,error)
-     GetAccounts() ([]*Account, error)
+      GetAccounts() ([]*Account, error)
 }
 
 
@@ -89,9 +89,9 @@ func (s *PostgresStore) GetAccounts() ([]*Account ,error ) {
     accounts :=  []*Account{} 
    
    for rows.Next() {
-       account :=  &Account{}
-       if err := rows.Scan(&account.ID ,&account.FirstName ,&account.LastName , &account.Number , &account.Balance , &account.CreatedAt ); err!= nil {
-           return nil ,err
+       account,err := scanIntoAccounts(rows)
+       if err!=nil {
+         return nil ,err
        }
        accounts = append(accounts, account)
    }
@@ -100,15 +100,55 @@ func (s *PostgresStore) GetAccounts() ([]*Account ,error ) {
    
 }
 
-func (s *PostgresStore) DeleteAccount( id int)error {
-	 return nil
+
+func scanIntoAccounts(rows *sql.Rows) (*Account , error) {
+     
+     account := new(Account)
+
+     err := rows.Scan(&account.ID , &account.FirstName , &account.LastName , &account.Number , &account.Balance , &account.CreatedAt )
+
+     if err!=nil {
+         return nil , err
+     }
+     
+     return account , nil
+}
+
+
+
+
+func (s *PostgresStore) DeleteAccount(id int)error {
+    
+    _ ,err := s.db.Query("DELETE FROM account where id = $1" , id)
+
+    if err!=nil {
+         return err  
+    } 
+   
+	return nil
 }
 func (s *PostgresStore) UpdateAccount(acc *Account)error {
 	 return nil
 }
 func (s *PostgresStore) GetAccountById(id int)(*Account , error) {
-	 return nil,nil
+    
+     rows , err := s.db.Query("SELECT * FROM account where id = $1" , id)
+     
+      if err!= nil {
+         return nil ,err
+      }
+
+      for rows.Next(){
+        account ,err := scanIntoAccounts(rows) 
+        
+        if(err!=nil){
+            return nil,err
+        }
+       
+       return account , nil
+
+      }  
+ 
+
+	 return nil, fmt.Errorf("No account has found with given id")
 }
-
-
-var st ,e = NewPostgresStore()
