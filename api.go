@@ -23,8 +23,11 @@ func WriteJson(w http.ResponseWriter , status int , v any) {
 
 func WithJWTAuth(next http.HandlerFunc) http.HandlerFunc{
    
-   log.Println("JWT");
+
    return func(w http.ResponseWriter , r *http.Request) {
+     
+      log.Println("JWT");   
+
       next(w,r)
    }
 }
