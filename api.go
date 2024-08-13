@@ -21,6 +21,14 @@ func WriteJson(w http.ResponseWriter , status int , v any) {
     w.Write(jData);
 }
 
+func WithJWTAuth(next http.HandlerFunc) http.HandlerFunc{
+   
+   log.Println("JWT");
+   return func(w http.ResponseWriter , r *http.Request) {
+      next(w,r)
+   }
+}
+
 type apiFunc func(http.ResponseWriter , *http.Request) error
 
 type ApiError struct{
@@ -54,7 +62,8 @@ func NewApiServer(listenAddr string , store Storage) *ApiServer {
 func(s *ApiServer) Run(){
 	 router := mux.NewRouter();
 	 router.HandleFunc("/account" , makeHttpHandlerFunc(s.handleAccount))
-	 router.HandleFunc("/account/{id}" , makeHttpHandlerFunc(s.handleAccountByID))
+	 router.HandleFunc("/account/{id}" , WithJWTAuth(makeHttpHandlerFunc(s.handleAccountByID)))
+   router.HandleFunc("/transfer/{accountNumber}" ,makeHttpHandlerFunc(s.handleTransferAccount))
 	 log.Println("JSON API Running at port" ,s.listenAddr)
 	 http.ListenAndServe(s.listenAddr ,router)
 }
@@ -155,6 +164,7 @@ func (s *ApiServer) handleTransferAccount(w http.ResponseWriter,r *http.Request 
      return err
    }
    defer r.Body.Close()
+   WriteJson(w,200,transferAmtReq);
    return nil;
 }
 
